@@ -67,7 +67,7 @@ class Settings(commands.Cog, name='настройки', description="ЧТО ДЕ
 
     @nsfw.sub_command(name='set', description='Установка авто-постинга NSFW канала')
     @commands.is_nsfw()
-    async def nsfw_set(self, inter, channel: disnake.TextChannel):
+    async def nsfw_set(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
         avatar = await inter.bot.user.avatar.read()
         hook = await channel.create_webhook(name="Лейла", avatar=avatar)
 
@@ -86,6 +86,8 @@ class Settings(commands.Cog, name='настройки', description="ЧТО ДЕ
                 description="Канал автопостинга NSFW был установлен, картинка отсылается каждые 30 секунд."
             )
         )
+        
+        await inter.followup.send(embed=disnake.Embed(title=":warning: Предупреждение!", description="- На данный момент автопостинг не стабилен и может не работать, по независящим от меня причинам :(", color=disnake.Color.yellow()), ephemeral=True)
     
     @nsfw.sub_command(name='remove', description="Убирает авто-постинг в NSFW канал")
     @commands.is_nsfw()
