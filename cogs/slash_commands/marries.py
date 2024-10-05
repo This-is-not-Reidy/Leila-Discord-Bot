@@ -19,7 +19,7 @@ class MarryButton(disnake.ui.View):
     @disnake.ui.button(label="Принять", style=disnake.ButtonStyle.green)
     async def marry_button_accept(self, button, inter):
         if inter.author.id != self.partner.id:
-            await inter.response.send_message("Принять должен тот, кого вы попросили!", ephemeral=True)
+            await inter.response.send_message("Принять должен тот, кого попросили!", ephemeral=True)
         else:
             await inter.response.send_message(f'{inter.author.mention} Согласен(на) быть партнёром 🎉')
             await self.config.DB.marries.insert_one({"_id": self.author.id, "mate": self.partner.id, 'time': datetime.now()})
@@ -28,7 +28,7 @@ class MarryButton(disnake.ui.View):
     @disnake.ui.button(label="Отказать", style=disnake.ButtonStyle.red)
     async def marry_button_cancel(self, button, inter):
         if inter.author.id != self.partner.id:
-            await inter.response.send_message("Нажать должен(на) тот, кого вы попросили!", ephemeral=True)
+            await inter.response.send_message("Нажать должен(на) тот, кого попросили!", ephemeral=True)
         else:
             await inter.response.send_message(f'{inter.author.id} Не согласен(на) быть партнёром')
             self.stop()
@@ -65,18 +65,24 @@ class Marries(commands.Cog, name="свадьбы", description="Можно по�
 
     @marry_cmd.sub_command(name="invite", description="Предложить сыграть свадьбу кому-либо")
     async def marry_invite(self, inter, member: disnake.Member):
+        member_married = await self.is_married(member, inter.bot)
+        author_married = await self.is_married(inter.author, inter.bot)
+
         if inter.author.id == member.id:
             raise CustomError("Выйти замуж за самого себя..?")
-        elif await self.is_married(inter.author, inter.bot) == 0:
-            await inter.send(
-                embed=await inter.bot.embeds.simple(
-                    title="Свадьба, получается <3", 
-                    description=f"{inter.author.mention} предлагает {member.mention} сыграть свадьбу. Ммм...)",
-                    footer={"text": "Только, давайте, без беременная в 16, хорошо?", 'icon_url': inter.author.display_avatar.url}
-                ), view=MarryButton(author=inter.author, partner=member)
-            )
-        else:
-            raise CustomError(f"Эм) Вы и/или {member.mention} женаты. На что вы надеетесь?")
+        elif member_married:
+            raise CustomError(f"Эм) {member.mention} в браке. На что вы надеетесь?")
+        elif author_married:
+            partner = await inter.bot.fetch_user((await inter.bot.config.DB.marries.find_one({'_id': inter.author.id}))['mate'])
+            raise CustomError(f"Эм) Вы уже в браке с {partner.mention}. На что вы надеетесь?")
+        
+        await inter.send(
+            embed=await inter.bot.embeds.simple(
+                title="Свадьба, получается <3", 
+                description=f"{inter.author.mention} предлагает {member.mention} сыграть свадьбу. Ммм...)",
+                footer={"text": "Только, давайте, без беременная в 16, хорошо?", 'icon_url': inter.author.display_avatar.url}
+            ), view=MarryButton(author=inter.author, partner=member)
+        )
 
     @marry_cmd.sub_command(name='divorce', description="Развод с партнёром")
     async def marry_divorce(self, inter):
@@ -88,7 +94,7 @@ class Marries(commands.Cog, name="свадьбы", description="Можно по�
                 view=DivorceButton(partner=inter.bot.get_user(dict(await inter.bot.config.DB.marries.find_one({'mate': inter.author.id}))['_id']) if await inter.bot.config.DB.marries.count_documents({"mate": inter.author.id}) != 0 else inter.bot.get_user(dict(await inter.bot.config.DB.marries.find_one({'_id': inter.author.id}))['mate']))
             )
         else:
-            raise CustomError("Вы и так не замужем, хихи.")
+            raise CustomError("Вы и так не в браке, хихи.")
 
     @marry_cmd.sub_command(name="marries", description="Выводит браки")
     async def marry_marries(self, inter):
